@@ -1,5 +1,7 @@
 # Linear Regression Model: Crime Rate (R Language)
 
+https://rpubs.com/iqbaljanuadi1201/LGM
+
 ## Crime Rate
 There are significant research and findings about crime trends in different locations and how socio-demographic factors can influence this trend. 
 This project will explore how a crime rate is significantly influenced by socio-demographic variables using a linear regression model.
