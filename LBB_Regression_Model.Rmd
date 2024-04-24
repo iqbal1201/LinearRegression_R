@@ -1,0 +1,362 @@
+---
+title: "Linear Regression Model: Crime Rate"
+author: "Muhamad Iqbal Januadi P"
+date: "1/9/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Crime Rate
+
+> There are significant research and finding about crime trends in different location and how socio-demographic factors can influence this trend. This project will explore how crime rate is significantly influenced by socio-demographic variables using linear regression model.
+
+```{r, out.width = "70%", echo = FALSE, fig.align = "center"}
+knitr::include_graphics("image/crime.jpg")
+```
+
+
+## 1. Do the data preparation steps for `crime` dataset
+
+> Import `crime` dataset from data_input folder to R
+
+```{r}
+crime <- read.csv("data_input/crime.csv")
+
+```
+
+> Renaming the column names of "crime" data
+```{r}
+
+names(crime) <- c("X" ,"percent_m", "is_south", "mean_education", "police_exp60", "police_exp59", "labour_participation", "m_per1000f", "state_pop", "nonwhites_per1000", "unemploy_m24", "unemploy_m39", "gdp", "inequality", "prob_prison", "time_prison", "crime_rate")
+
+```
+
+> The dataset was collected in 1960 and a full description of the dataset wasn't conveniently available. I use the description I gathered from the authors of the MASS package. After you rename the dataset, the variables are: 
+
+- `percent_m`: percentage of males aged 14-24
+- `is_south`: whether it is in a Southern state. 1 for Yes, 0 for No.  
+- `mean_education`: mean years of schooling  
+- `police_exp60`: police expenditure in 1960  
+- `police_exp59`: police expenditure in 1959
+- `labour_participation`: labour force participation rate  
+- `m_per1000f`: number of males per 1000 females  
+- `state_pop`: state population  
+- `nonwhites_per1000`: number of non-whites resident per 1000 people  
+- `unemploy_m24`: unemployment rate of urban males aged 14-24  
+- `unemploy_m39`: unemployment rate of urban males aged 35-39  
+- `gdp`: gross domestic product per head  
+- `inequality`: income inequality  
+- `prob_prison`: probability of imprisonment  
+- `time_prison`: avg time served in prisons  
+- `crime_rate`: crime rate in an unspecified category
+
+
+> Check data structure and missing data from `crime` dataset
+
+```{r}
+library(tidyverse)
+glimpse(crime)
+```
+
+## 2. Do data cleansing steps for `crime` dataset
+
+> - Check missing value (NA)
+> - Delete unused variable in `crime` dataset
+> - Adjust the data types of `crime` dataset
+> - Make new variable to explore 'mean_education'
+
+```{r}
+crime %>%
+  is.na()%>%
+  colSums()
+
+crime <- crime %>% 
+  select(-X) %>% 
+  mutate(is_south = as.factor(is_south)) 
+
+crime2 <- crime %>%
+  mutate(quad_edu = mean_education ^2) 
+
+crime3 <- crime %>%
+  mutate(log_edu = log10(mean_education)) 
+
+```
+
+## 3. Explore the variables
+
+> We want to know how much the socio-demographic influence `crime_rate`. Before conducting regression analysis, do the EDA (Exploratory Data Analysis) steps to look at the data conditions (how the relation between socio-demographic variables and `crime_rate`).
+
+```{r}
+library(GGally)
+ggcorr(crime,label = T)
+```
+
+> From the graph, we can see that most of the socia-demographic variables have the positive relation to the crime_rate, unless the 'prob_prison', 'unemploy_m24', and 'percent_m'. 
+> The predictor variables which show the highest relation with 'crime_rate' are the 'police_exp60' and 'police_exp59'.
+> Variable 'nonwhites_per1000' shows no relation with the 'crime_rate'.
+
+
+
+## Regression Model: Multiple Linear Regression
+
+> Conducting the multiple linear regression operation to understand to relation between predictor variables (x axis) and the target variables (y axis). In this model, the predictor variables are the socio-demographic, while the target variable is the 'crime_rate'. In a nutshell, this model will analyze how 'crime_rate' is influenced by other variables.
+
+> - y = crime_rate
+> - x = all predictor
+
+
+## Exploring the regression model
+
+> To find out the best model for crime_rate, we make several model that uses different predictor variables.
+
+> 1. Model with all variable
+```{r}
+crime_model <- lm(formula = crime_rate ~ . , data = crime)
+summary(crime_model)
+```
+> The intercept of this model is -5984.2876
+> Assuming the alpha value used for this model is 95% (0.05)
+> Significant predictor variables to this model have probability value < 0.05
+> Significant variables to 'crime_rate': 'percent_m', 'mean_education', 'inequality ', and 'prob_prison'.
+> Adjusted of R-squared is 70%. This means the predictor variables can only explain 70% of target variable (crime_rate). Other predictor variables that not included in this model explain to target variable as much as 30%.
+> Interestingly, the mean_education has a positive relation towards the crime_rate. This means the crime_rate will be influenced if the mean_education is high. This doesn't make sense. That's why we propose different model (model 2) which take out the mean_education variables.
+> The linear formula for this model:
+
+$$Crime Rate = -5984.2876 + (8.7830) * percent_m + (18.832) * mean_education + (7.0672) * inequality + (-4855.2658) * prob_prison$$
+
+> 2. Model using the above formula + take out the 'mean_education'
+
+```{r}
+crime_model2 <- lm(formula = crime_rate ~ percent_m + is_south + police_exp60 + police_exp59 + 
+                     labour_participation + inequality + m_per1000f + state_pop + nonwhites_per1000 + 
+                     unemploy_m24 + unemploy_m39 + gdp + inequality + time_prison +  prob_prison, data = crime )
+
+summary(crime_model2)
+```
+> The intercept of this model is -5280.5903.
+> Assuming the alpha value used for this model is 95% (0.05).
+> Significant predictor variables to this model have probability value < 0.05.
+> Significant variables to 'crime_rate': 'inequality '.
+> Adjusted of R-squared is 63%. This means the predictor variables can only explain 63% of target variable (crime_rate). Other predictor variables that not included in this model explain to target variable as much as 37%. This model has a lower Adjusted R-Squared value than the model 1.
+
+> The linear formula for this model:
+
+$$Crime Rate = -5280.5903 + (5.6342) * inequality$$
+> Since the mean_education seems not look in the model, we explore this variable by make a quadratic and logarithmic value.
+
+
+> 3. Model using quadratic 'mean_education'
+
+```{r}
+crime_model3 <- lm(formula = crime_rate ~., data = crime2)
+summary(crime_model3)
+```
+> The intercept of this model is -1.055e+04.
+> Assuming the alpha value used for this model is 95% (0.05).
+> Significant predictor variables to this model have probability value < 0.05.
+> Significant variables to 'crime_rate': 'percent_m', 'unemploy_m39', 'inequality', 'prob_prison'.
+> Adjusted of R-squared is 70%. This means the predictor variables can only explain 70% of target variable (crime_rate). Other predictor variables that not included in this model explain to target variable as much as 30%. 
+
+> The linear formula for this model:
+
+$$Crime Rate = -1.055e+04 + (1.040e+01) * percent_m + (1.762e+01) * unemploy_m39 + (7.358e+00) * inequality + (-4.914e+03) prob_prison $$
+
+> 4. Model using quadratic log 'mean_education'
+
+```{r}
+crime_model6 <- lm(formula = crime_rate ~., data = crime3)
+summary(crime_model6)
+```
+> The intercept of this model is -3.772e+04.
+> Assuming the alpha value used for this model is 95% (0.05).
+> Significant predictor variables to this model have probability value < 0.05.
+> Significant variables to 'crime_rate': 'percent_m', 'unemploy_m39', 'inequality', 'prob_prison'.
+> Adjusted of R-squared is 71%. This means the predictor variables can only explain 70% of target variable (crime_rate). Other predictor variables that not included in this model explain to target variable as much as 29%. 
+
+> The linear formula for this model:
+
+$$Crime Rate = -3.772e+04 + (1.048e+01) * percent_m + (1.779e+01) * unemploy_m39 + (7.378e+00) * inequality + (-4.925e+03) * prob_prison $$
+
+> In order to get better model, we apply the stepwise multilinear regression to determine the best predictor variable in the model.
+
+> 5. Exploring regression model using stepwise regression to know significant variables
+
+```{r}
+# model without predictor
+model_none <- lm(crime_rate ~ 1, data = crime)
+
+```
+
+> 5.a Backward Stepwise 
+
+```{r}
+backward <- step(object = crime_model, direction = "backward")
+
+```
+
+> 5.b Forward Stepwise
+
+```{r}
+forward <- step(object = model_none, direction = "forward", scope = list(lower=model_none, upper=crime_model))
+```
+> 5.c Both Stewise (using base all predictor)
+
+```{r}
+both1 <- step(object = crime_model, direction = "both", scope = list(lower=model_none, upper = crime_model))
+```
+
+> 5.d Both Stewise (using base none predictor)
+
+```{r}
+both2 <- step(object = model_none, direction = "both", scope = list(lower=model_none, upper =crime_model))
+```
+
+> The result from stepwise multilinear regression show the backward model is the best according to the AIC value. 
+> However, this model still include the mean_education variable
+> We propose next model that derived from backward model by taking out the mean_education variable
+
+> 6. Crime model 4 (derived from backward model without mean_education)
+
+```{r}
+crime_model4 <- lm(formula = crime_rate ~  police_exp60 + percent_m +
+                   inequality + m_per1000f + 
+                     unemploy_m24 + unemploy_m39 + inequality +  prob_prison, data = crime )
+
+summary(crime_model4)
+```
+
+> 7. Crime model 5 (same with backward)
+```{r}
+crime_model5 <- lm(formula = crime_rate ~  police_exp60 + percent_m +
+                   inequality + m_per1000f + mean_education +
+                     unemploy_m24 + unemploy_m39 + inequality +  prob_prison, data = crime )
+
+summary(crime_model5)
+```
+> Model 6 is better than model 5 by comparing from Adj R-Squared value
+
+
+### Model Comparison Based on the Adjusted R-Squared Value
+
+> This step is undertaken to find out the best model. The parameter used to compare the performance is the Goodness of Fit Adjusted R-Squared 
+
+```{r}
+print(paste("crime_model: ", round(summary(crime_model)$adj.r.squared, 5)))
+print(paste("crime_model2: ", round(summary(crime_model2)$adj.r.squared, 5)))
+print(paste("crime_model3: ", round(summary(crime_model3)$adj.r.squared, 5)))
+print(paste("crime_model4: ", round(summary(crime_model4)$adj.r.squared, 5)))
+print(paste("backward: ", round(summary(backward)$adj.r.squared, 5)))
+print(paste("forward: ", round(summary(forward)$adj.r.squared, 5)))
+print(paste("both (from model all): ", round(summary(both1)$adj.r.squared, 5)))
+print(paste("both (from model none): ", round(summary(both2)$adj.r.squared, 5)))
+```
+> The best model which having higher Adjusted R-Squared is the backward and the both (from model all).
+> These model still include the mean_education with positive relation. That's why we visualize this predictor variable to understand why this variable has positive relation towards crime_rate.
+
+```{r}
+boxplot(crime$mean_education)
+
+hist(crime$mean_education, breaks = 15)
+
+mean(crime$mean_education)
+
+```
+
+>This graph can explain why mean_education has the positive relation with the crime rate. From boxplot, most of the people have a middle education level than the average. The very low educated people may not commit crimes but maybe the middle educated do so. This implicates to the positive coefficient value of mean_eduacation variable towards the model.
+
+```{r}
+library(performance)
+
+compare_performance(backward, forward, both1, both2)
+```
+
+## Model prediction based on stepwise backward model
+
+> Based on the Adjusted R-Square and RMSE value, the best model is the backward/model 5
+
+```{r}
+crime$pred_crime <- predict(object = crime_model5, newdata = crime)
+
+crime
+```
+
+### Model Evaluation
+
+## Normality Error
+
+> Visualize the histogram of yielded error.
+> - Good model should have the error value that distributed with normal distribution, scattered around mean value.
+
+> Test of Normality Error:
+
+> 1. Visualizing the histogram of error
+
+```{r}
+hist(backward$residuals, breaks = 20)
+```
+
+
+> 2. Statistical test using 'shapiro.test()` function
+
+> Shapiro-Wilk hypothesis:
+
+> - H0: error/residual distributed normally
+> - H1: error/residual is not distributed normally
+
+```{r}
+shapiro.test(backward$residuals)
+```
+> Assuming alpha value is 0.05.
+> The p-value is higehr than alpha.
+> Accept H0 : Error is distributed normally.
+
+
+### Homoscedasticity Test
+
+>Test the variance of error in the model
+> - Good model should have a low variance of error
+
+> Test of Homoscedasticity
+> 1. Visualizing the error value by scatter plot
+
+```{r}
+plot(backward$fitted.values, backward$residuals)
+abline(h=0, col = "red")
+```
+
+> 2. Statistical test using Breusch-Pagan by `bptest()` function from library `lmtest`
+
+> Breusch-Pagan hypothesis :
+
+> - H0: The model is Homoscedasticity
+> - H1: The model is Heteroscedasticity
+
+```{r}
+library(lmtest)
+bptest(backward)
+```
+
+> Assuming alpha value is 0.05.
+> The p-value is higehr than alpha.
+> Accept H0 : The model is homoscedasticity.
+
+
+
+
+### No-multicolinearity (No correlation between predictor variables)
+
+>Test to examine whether there is correlation between the predictor variables
+> - Good model should not have multicolinearity
+> - The test is undertaken by examine the vif value using `vif()` function from library `car`. 
+> - When the VIF value is under 10, the assumption of no-multicolinearity is fulfilled.
+
+```{r}
+library(car)
+vif(backward)
+```
+
+> All the predictor variables show the VIF value under 10.
+
